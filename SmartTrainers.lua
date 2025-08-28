@@ -3,7 +3,8 @@
 ---------------------
 -- Addon based on WeaponTrainers
 -- Made for Project Epoch
--- Rogues have Axes, Druids have Polearms
+-- Rogues have Axes and Guns
+-- Druids have Polearms
 
 SLASH_STRAINERS1, SLASH_STRAINERS2 = '/smarttrainers', '/st';
 function SlashCmdList.STRAINERS(msg, editBox)
