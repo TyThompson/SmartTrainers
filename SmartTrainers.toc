@@ -1,0 +1,7 @@
+## Interface: 30300
+## Notes: Type /st to show you which weapon trainers train what skills, also accepts chat channels as an arg to post to others (example: /st party).
+## Title: SmartTrainers
+## Author: Ty Thompson
+## Version: 1.0
+
+SmartTrainers.lua
