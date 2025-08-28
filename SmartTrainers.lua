@@ -19,7 +19,7 @@ function SlashCmdList.STRAINERS(msg, editBox)
         warrior = {"Axes", "Swords", "Two-Handed Axes", "Two-Handed Swords", "Two-Handed Maces", "Maces", "Polearms"},
         paladin = {"Axes", "Maces", "Swords", "Two-Handed Axes", "Two-Handed Maces", "Two-Handed Swords"},
         hunter = {"Bows", "Crossbows", "Guns", "Daggers", "Fist Weapons", "Polearms", "Staves", "Thrown Weapons"},
-        rogue = {"Bows", "Crossbows", "Daggers", "Fist Weapons", "Axes", "Maces", "Swords", "Thrown Weapons"},
+        rogue = {"Bows", "Crossbows", "Guns", "Daggers", "Fist Weapons", "Axes", "Maces", "Swords", "Thrown Weapons"},
         priest = {"Daggers", "Maces", "Staves"},
         shaman = {"Daggers", "Fist Weapons", "Axes", "Staves"},
         mage = {"Daggers", "Swords", "Staves"},
