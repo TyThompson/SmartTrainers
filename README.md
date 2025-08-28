@@ -4,7 +4,7 @@ Type /st or /smarttrainers to show you which weapon trainers can train what skil
 World of Warcraft Build 30300
 
 Made for Project Epoch
-* Rogues have axes
+* Rogues have axes and guns
 * Druids have polearms
 
 <img width="809" height="565" alt="image" src="https://github.com/user-attachments/assets/eb24770d-6b3a-4f66-b227-5e728f5380d2" />
