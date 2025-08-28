@@ -66,7 +66,7 @@ function SlashCmdList.STRAINERS(msg, editBox)
         local missingSkills = {};
         if classSkills[class] then
             local knownSkills = {};
-            print("Debug: Checking skill lines...");
+            -- print("Debug: Checking skill lines...");
             -- Expand all skill headers to ensure all skills are visible
             local numSkills = GetNumSkillLines();
             for i = 1, numSkills do
@@ -80,16 +80,16 @@ function SlashCmdList.STRAINERS(msg, editBox)
             for i = 1, numSkills do
                 local name, isHeader, isExpanded, skillRank = GetSkillLineInfo(i);
                 if name and not isHeader and skillRank > 0 then
-                    print("Found skill: "..name.." (Rank: "..skillRank..")");
+                    -- print("Found skill: "..name.." (Rank: "..skillRank..")");
                     for skillName, displayName in pairs(weaponSkillNames) do
                         if name == displayName then
-                            print("Matched skill: "..name.." to "..skillName);
+                            -- print("Matched skill: "..name.." to "..skillName);
                             table.insert(knownSkills, skillName);
                         end
                     end
                 end
             end
-            print("Debug: Known skills: "..(next(knownSkills) and table.concat(knownSkills, ", ") or "None"));
+            -- print("Debug: Known skills: "..(next(knownSkills) and table.concat(knownSkills, ", ") or "None"));
             for _, skill in ipairs(classSkills[class]) do
                 if not tContains(knownSkills, skill) then
                     table.insert(missingSkills, skill);
