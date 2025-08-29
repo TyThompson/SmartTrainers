@@ -53,8 +53,8 @@ function SlashCmdList.STRAINERS(msg, editBox)
         Alliance = {
             ["Ironforge (Buliwyf Stonehand)"] = "Guns, Axes, Maces, Fist Weapons",
             ["Ironforge (Bixi Wobblebonk)"] = "Daggers, Crossbows, Thrown",
-            ["Stormwind (Hanashi)"] = "Bows, Thrown, Axes, Staves",
-            ["Darnassus (Wooping)"] = "Crossbows, Daggers, Swords, Polearms, Staves",
+            ["Stormwind (Woo Ping)"] = "Bows, Thrown, Axes, Staves",
+            ["Darnassus (Ilyenia Moonfire)"] = "Crossbows, Daggers, Swords, Polearms, Staves, Fist Weapons",
         },
     };
     if (msg == "group" or msg == "team") then
