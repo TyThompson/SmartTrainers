@@ -3,5 +3,6 @@
 ## Title: SmartTrainers
 ## Author: Ty Thompson
 ## Version: 1.0
+## SavedVariablesPerCharacter: SmartTrainersDB
 
 SmartTrainers.lua

@@ -6,6 +6,30 @@
 -- Rogues have Axes and Guns
 -- Druids have Polearms
 
+-- Define SavedVariables table
+SmartTrainersDB = SmartTrainersDB or {}
+
+-- Create a frame to handle events
+local frame = CreateFrame("Frame")
+frame:RegisterEvent("ADDON_LOADED")
+frame:SetScript("OnEvent", function(self, event, arg1)
+    if event == "ADDON_LOADED" and arg1 == "SmartTrainers" then
+        -- Debug check for SavedVariables
+        if SmartTrainersDB then
+            local playerName = UnitName("player")
+            if SmartTrainersDB[playerName] and SmartTrainersDB[playerName].missingSkills then
+                print("|cFF00FF00SmartTrainers loaded successfully for " .. playerName .. " with " .. #SmartTrainersDB[playerName].missingSkills .. " missing skill(s).")
+            else
+                print("|cFF00FF00SmartTrainers initialized, no data for " .. playerName .. " yet.")
+            end
+        else
+            print("|cFFFF0000SmartTrainers: Error - SmartTrainersDB failed to load.")
+        end
+        -- Unregister the event after loading to avoid unnecessary checks
+        self:UnregisterEvent("ADDON_LOADED")
+    end
+end)
+
 SLASH_STRAINERS1, SLASH_STRAINERS2 = '/smarttrainers', '/st';
 function SlashCmdList.STRAINERS(msg, editBox)
     msg = string.lower(msg);
@@ -63,64 +87,91 @@ function SlashCmdList.STRAINERS(msg, editBox)
     if (trainers[faction] and trainers[faction][msg]) then
         SendChatMessage(trainers[faction][msg], msg);
     elseif (msg == "") then
-        -- Check missing weapon skills for the player's class
-        local missingSkills = {};
-        if classSkills[class] then
-            local knownSkills = {};
-            -- print("Debug: Checking skill lines...");
-            -- Expand all skill headers to ensure all skills are visible
-            local numSkills = GetNumSkillLines();
-            for i = 1, numSkills do
-                local name, isHeader = GetSkillLineInfo(i);
-                if isHeader then
-                    ExpandSkillHeader(i);
-                end
-            end
-            -- Re-check skills after expanding headers
-            numSkills = GetNumSkillLines(); -- Update after expanding headers
-            for i = 1, numSkills do
-                local name, isHeader, isExpanded, skillRank = GetSkillLineInfo(i);
-                if name and not isHeader and skillRank > 0 then
-                    -- print("Found skill: "..name.." (Rank: "..skillRank..")");
-                    for skillName, displayName in pairs(weaponSkillNames) do
-                        if name == displayName then
-                            -- print("Matched skill: "..name.." to "..skillName);
-                            table.insert(knownSkills, skillName);
-                        end
-                    end
-                end
-            end
-            -- print("Debug: Known skills: "..(next(knownSkills) and table.concat(knownSkills, ", ") or "None"));
-            for _, skill in ipairs(classSkills[class]) do
-                if not tContains(knownSkills, skill) then
-                    table.insert(missingSkills, skill);
-                end
-            end
+        -- Initialize SavedVariables for this player if not exists
+        local playerName = UnitName("player");
+        SmartTrainersDB[playerName] = SmartTrainersDB[playerName] or {};
+        SmartTrainersDB[playerName].faction = faction;
+        SmartTrainersDB[playerName].class = class;
+
+        -- Check if we have saved data for this player's faction and class
+        if SmartTrainersDB[playerName].missingSkills then
+            -- Use saved data
+            local missingSkills = SmartTrainersDB[playerName].missingSkills;
             if #missingSkills > 0 then
                 print("Missing weapon skills for your "..coloredClass..": |cFF9CD6DE"..table.concat(missingSkills, ", "));
             else
                 print("|cFF80FF80You know all available weapon skills for your "..coloredClass);
             end
-        else
-            print("Class skills not found for your "..coloredClass);
-            return; -- Exit if class skills are not found
-        end
-        -- List only trainers who offer missing skills that the class can use
-        for npc, weapons in pairs(trainers[faction]) do
-            local filteredWeapons = {};
-            local offersMissingSkill = false;
-            -- Split the trainer's skills into a table
-            for weapon in weapons:gmatch("[^,]+") do
-                weapon = weapon:match("^%s*(.-)%s*$"); -- Trim whitespace
-                -- Check if the skill is in classSkills[class] and missingSkills
-                if tContains(classSkills[class], weapon) and tContains(missingSkills, weapon) then
-                    table.insert(filteredWeapons, weapon);
-                    offersMissingSkill = true;
+            -- List trainers for saved missing skills
+            for npc, weapons in pairs(trainers[faction]) do
+                local filteredWeapons = {};
+                local offersMissingSkill = false;
+                for weapon in weapons:gmatch("[^,]+") do
+                    weapon = weapon:match("^%s*(.-)%s*$"); -- Trim whitespace
+                    if tContains(classSkills[class], weapon) and tContains(missingSkills, weapon) then
+                        table.insert(filteredWeapons, weapon);
+                        offersMissingSkill = true;
+                    end
+                end
+                if offersMissingSkill and #filteredWeapons > 0 then
+                    print("|cFFFFFF00"..npc.."|r: |cFF9CD6DE"..table.concat(filteredWeapons, ", "));
                 end
             end
-            -- Only print the trainer if they offer at least one missing skill
-            if offersMissingSkill and #filteredWeapons > 0 then
-                print("|cFFFFFF00"..npc.."|r: |cFF9CD6DE"..table.concat(filteredWeapons, ", "));
+        else
+            -- Calculate missing skills and save them
+            local missingSkills = {};
+            if classSkills[class] then
+                local knownSkills = {};
+                -- Expand all skill headers to ensure all skills are visible
+                local numSkills = GetNumSkillLines();
+                for i = 1, numSkills do
+                    local name, isHeader = GetSkillLineInfo(i);
+                    if isHeader then
+                        ExpandSkillHeader(i);
+                    end
+                end
+                -- Re-check skills after expanding headers
+                numSkills = GetNumSkillLines();
+                for i = 1, numSkills do
+                    local name, isHeader, isExpanded, skillRank = GetSkillLineInfo(i);
+                    if name and not isHeader and skillRank > 0 then
+                        for skillName, displayName in pairs(weaponSkillNames) do
+                            if name == displayName then
+                                table.insert(knownSkills, skillName);
+                            end
+                        end
+                    end
+                end
+                for _, skill in ipairs(classSkills[class]) do
+                    if not tContains(knownSkills, skill) then
+                        table.insert(missingSkills, skill);
+                    end
+                end
+                -- Save missing skills to SavedVariables
+                SmartTrainersDB[playerName].missingSkills = missingSkills;
+                if #missingSkills > 0 then
+                    print("Missing weapon skills for your "..coloredClass..": |cFF9CD6DE"..table.concat(missingSkills, ", "));
+                else
+                    print("|cFF80FF80You know all available weapon skills for your "..coloredClass);
+                end
+                -- List trainers for missing skills
+                for npc, weapons in pairs(trainers[faction]) do
+                    local filteredWeapons = {};
+                    local offersMissingSkill = false;
+                    for weapon in weapons:gmatch("[^,]+") do
+                        weapon = weapon:match("^%s*(.-)%s*$"); -- Trim whitespace
+                        if tContains(classSkills[class], weapon) and tContains(missingSkills, weapon) then
+                            table.insert(filteredWeapons, weapon);
+                            offersMissingSkill = true;
+                        end
+                    end
+                    if offersMissingSkill and #filteredWeapons > 0 then
+                        print("|cFFFFFF00"..npc.."|r: |cFF9CD6DE"..table.concat(filteredWeapons, ", "));
+                    end
+                end
+            else
+                print("Class skills not found for your "..coloredClass);
+                return;
             end
         end
     else
