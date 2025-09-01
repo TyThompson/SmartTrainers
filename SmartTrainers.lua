@@ -12,21 +12,125 @@ SmartTrainersDB = SmartTrainersDB or {}
 -- Create a frame to handle events
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("ADDON_LOADED")
+frame:RegisterEvent("SKILL_LINES_CHANGED")
+
+-- Debounce variables
+local lastSkillUpdate = 0
+local debounceTime = 5 -- seconds to ignore additional SKILL_LINES_CHANGED events
+local isProcessingSkills = false
+
 frame:SetScript("OnEvent", function(self, event, arg1)
     if event == "ADDON_LOADED" and arg1 == "SmartTrainers" then
+        -- Initialize debug setting if not set
+        SmartTrainersDB.debugEnabled = SmartTrainersDB.debugEnabled or false
         -- Debug check for SavedVariables
         if SmartTrainersDB then
             local playerName = UnitName("player")
             if SmartTrainersDB[playerName] and SmartTrainersDB[playerName].missingSkills then
-                print("|cFF00FF00SmartTrainers loaded successfully for " .. playerName .. " with " .. #SmartTrainersDB[playerName].missingSkills .. " missing skill(s).")
+                print("|cFF00FF00SmartTrainers: SavedVariables loaded successfully for " .. playerName .. " with " .. #SmartTrainersDB[playerName].missingSkills .. " missing skills.")
             else
-                print("|cFF00FF00SmartTrainers initialized, no data for " .. playerName .. " yet.")
+                print("|cFF00FF00SmartTrainers: SavedVariables initialized, no data for " .. playerName .. " yet.")
+            end
+            if SmartTrainersDB.debugEnabled then
+                print("|cFF00FF00SmartTrainers: Debug mode is enabled.")
             end
         else
-            print("|cFFFF0000SmartTrainers: Error - SmartTrainersDB failed to load.")
+            print("|cFFFF0000SmartTrainers: Error - SavedVariables (SmartTrainersDB) failed to load.")
         end
-        -- Unregister the event after loading to avoid unnecessary checks
+        -- Unregister ADDON_LOADED to avoid redundant checks
         self:UnregisterEvent("ADDON_LOADED")
+    elseif event == "SKILL_LINES_CHANGED" then
+        -- Check if within debounce window
+        local currentTime = GetTime()
+        if currentTime - lastSkillUpdate < debounceTime then
+            if SmartTrainersDB.debugEnabled then
+                print("|cFF00FF00SmartTrainers: SKILL_LINES_CHANGED skipped (debounce, last update " .. (currentTime - lastSkillUpdate) .. "s ago)")
+            end
+            return
+        end
+        -- Skip if already processing
+        if isProcessingSkills then
+            if SmartTrainersDB.debugEnabled then
+                print("|cFF00FF00SmartTrainers: SKILL_LINES_CHANGED skipped (already processing)")
+            end
+            return
+        end
+        isProcessingSkills = true
+        -- Delay execution to avoid running during heavy loading
+        C_Timer.After(1, function()
+            local playerName = UnitName("player")
+            local _, class = UnitClass("player")
+            class = string.lower(class)
+            local classSkills = {
+                warrior = {"Axes", "Swords", "Two-Handed Axes", "Two-Handed Swords", "Two-Handed Maces", "Maces", "Polearms"},
+                paladin = {"Axes", "Maces", "Swords", "Two-Handed Axes", "Two-Handed Maces", "Two-Handed Swords"},
+                hunter = {"Bows", "Crossbows", "Guns", "Daggers", "Fist Weapons", "Polearms", "Staves", "Thrown Weapons"},
+                rogue = {"Bows", "Crossbows", "Guns", "Daggers", "Fist Weapons", "Axes", "Maces", "Swords", "Thrown Weapons"},
+                priest = {"Daggers", "Maces", "Staves"},
+                shaman = {"Daggers", "Fist Weapons", "Axes", "Staves"},
+                mage = {"Daggers", "Swords", "Staves"},
+                warlock = {"Daggers", "Swords", "Staves"},
+                druid = {"Daggers", "Fist Weapons", "Maces", "Staves", "Polearms"},
+            }
+            local weaponSkillNames = {
+                ["Axes"] = "Axes",
+                ["Two-Handed Axes"] = "Two-Handed Axes",
+                ["Bows"] = "Bows",
+                ["Crossbows"] = "Crossbows",
+                ["Daggers"] = "Daggers",
+                ["Fist Weapons"] = "Fist Weapons",
+                ["Guns"] = "Guns",
+                ["Maces"] = "Maces",
+                ["Two-Handed Maces"] = "Two-Handed Maces",
+                ["Polearms"] = "Polearms",
+                ["Swords"] = "Swords",
+                ["Two-Handed Swords"] = "Two-Handed Swords",
+                ["Staves"] = "Staves",
+                ["Thrown Weapons"] = "Thrown",
+            }
+            if classSkills[class] and SmartTrainersDB[playerName] then
+                if SmartTrainersDB.debugEnabled then
+                    print("|cFF00FF00SmartTrainers: Processing SKILL_LINES_CHANGED for " .. playerName)
+                end
+                local knownSkills = {}
+                -- Expand all skill headers to ensure all skills are visible
+                local numSkills = GetNumSkillLines()
+                for i = 1, numSkills do
+                    local name, isHeader = GetSkillLineInfo(i)
+                    if isHeader then
+                        ExpandSkillHeader(i)
+                    end
+                end
+                -- Re-check skills after expanding headers
+                numSkills = GetNumSkillLines()
+                for i = 1, numSkills do
+                    local name, isHeader, isExpanded, skillRank = GetSkillLineInfo(i)
+                    if name and not isHeader and skillRank > 0 then
+                        for skillName, displayName in pairs(weaponSkillNames) do
+                            if name == displayName then
+                                table.insert(knownSkills, skillName)
+                            end
+                        end
+                    end
+                end
+                -- Update missingSkills by keeping only skills not known
+                local missingSkills = {}
+                for _, skill in ipairs(classSkills[class]) do
+                    if not tContains(knownSkills, skill) then
+                        table.insert(missingSkills, skill)
+                    end
+                end
+                -- Update SavedVariables with new missingSkills
+                SmartTrainersDB[playerName].missingSkills = missingSkills
+                -- Update last processed time
+                lastSkillUpdate = GetTime()
+                -- Debug message to confirm skill update
+                if SmartTrainersDB.debugEnabled then
+                    print("|cFF00FF00SmartTrainers: Updated missing skills for " .. playerName .. ". Missing skills: " .. (#missingSkills > 0 and table.concat(missingSkills, ", ") or "None"))
+                end
+            end
+            isProcessingSkills = false
+        end)
     end
 end)
 
@@ -70,14 +174,14 @@ function SlashCmdList.STRAINERS(msg, editBox)
     local trainers = {
         Horde = {
             ["Undercity (Archibald)"] = "Crossbows, Daggers, Swords, Polearms",
-            ["Thunder Bluff (Ansekhwa)"] = "Guns, Maces, Staves",
-            ["Orgrimmar (Hanashi)"] = "Bows, Thrown, Axes, Staves",
-            ["Orgrimmar (Sayoc)"] = "Bows, Thrown, Axes, Staves, Daggers, Fist Weapons",
+            ["Thunder Bluff (Ansekhwa)"] = "Guns, Maces, Two-Handed Maces, Staves",
+            ["Orgrimmar (Hanashi)"] = "Bows, Thrown, Axes, Two-Handed Axes, Staves",
+            ["Orgrimmar (Sayoc)"] = "Bows, Thrown, Axes, Two-Handed Axes, Staves, Daggers, Fist Weapons",
         },
         Alliance = {
-            ["Ironforge (Buliwyf Stonehand)"] = "Guns, Axes, Maces, Fist Weapons",
+            ["Ironforge (Buliwyf Stonehand)"] = "Guns, Axes, Two-Handed Axes, Maces, Two-Handed Maces, Fist Weapons",
             ["Ironforge (Bixi Wobblebonk)"] = "Daggers, Crossbows, Thrown",
-            ["Stormwind (Woo Ping)"] = "Bows, Thrown, Axes, Staves",
+            ["Stormwind (Woo Ping)"] = "Bows, Thrown, Axes, Two-Handed Axes, Staves",
             ["Darnassus (Ilyenia Moonfire)"] = "Crossbows, Daggers, Swords, Polearms, Staves, Fist Weapons",
         },
     };
@@ -86,6 +190,27 @@ function SlashCmdList.STRAINERS(msg, editBox)
     end
     if (trainers[faction] and trainers[faction][msg]) then
         SendChatMessage(trainers[faction][msg], msg);
+    elseif (msg == "reset") then
+        -- Reset command: clear player's data from SavedVariables and recalculate
+        local playerName = UnitName("player");
+        SmartTrainersDB[playerName] = nil;
+        print("|cFFFF0000SmartTrainers: Data reset for " .. playerName .. ". Recalculating missing skills...");
+        -- Trigger recalculation by calling the function with empty msg
+        SlashCmdList.STRAINERS("", editBox);
+    elseif (msg == "debug") then
+        -- Debug command: toggle debug mode and print current SavedVariables data
+        local playerName = UnitName("player");
+        SmartTrainersDB.debugEnabled = not SmartTrainersDB.debugEnabled;
+        print("|cFF00FF00SmartTrainers: Debug mode " .. (SmartTrainersDB.debugEnabled and "enabled" or "disabled") .. ".");
+        if SmartTrainersDB[playerName] then
+            local data = SmartTrainersDB[playerName];
+            print("|cFF00FF00SmartTrainers Debug: Data for " .. playerName);
+            print("Faction: " .. (data.faction or "None"));
+            print("Class: " .. (data.class and data.class:sub(1,1):upper()..data.class:sub(2) or "None"));
+            print("Missing Skills: " .. (data.missingSkills and #data.missingSkills > 0 and table.concat(data.missingSkills, ", ") or "None"));
+        else
+            print("|cFF00FF00SmartTrainers Debug: No data found for " .. playerName);
+        end
     elseif (msg == "") then
         -- Initialize SavedVariables for this player if not exists
         local playerName = UnitName("player");
@@ -175,6 +300,6 @@ function SlashCmdList.STRAINERS(msg, editBox)
             end
         end
     else
-        print("|cFFFFFF00You can type \"/st\" alone to print weapon trainers to yourself.");
+        print("|cFFFFFF00You can type \"/st\" alone to print weapon trainers, \"/st reset\" to clear saved data, or \"/st debug\" to toggle debug mode and inspect saved data.");
     end
 end
