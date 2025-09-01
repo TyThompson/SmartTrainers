@@ -1,11 +1,13 @@
 # SmartTrainers
-Type /st or /smarttrainers to show you which weapon trainers can train what skills.
-/st debug to turn on debug mode
-/st reset to reset character saved skills
 
 Made for <a href="https://www.project-epoch.net/">Project Epoch</a>
 * Rogues have axes and guns
 * Druids have polearms
+
+## Chat Commands
+/st or /smarttrainers to show you what skills can be trained.<br>
+/st debug to turn on debug mode.<br>
+/st reset to reset character saved skills.<br>
 
 
 
