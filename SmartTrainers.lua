@@ -19,6 +19,18 @@ local lastSkillUpdate = 0
 local debounceTime = 5 -- seconds to ignore additional SKILL_LINES_CHANGED events
 local isProcessingSkills = false
 
+-- Delay function using OnUpdate and GetTime()
+local function Delay(duration, callback)
+    local delayFrame = CreateFrame("Frame")
+    local startTime = GetTime()
+    delayFrame:SetScript("OnUpdate", function(self, elapsed)
+        if GetTime() >= startTime + duration then
+            callback()
+            self:SetScript("OnUpdate", nil) -- Clean up the OnUpdate script
+        end
+    end)
+end
+
 frame:SetScript("OnEvent", function(self, event, arg1)
     if event == "ADDON_LOADED" and arg1 == "SmartTrainers" then
         -- Initialize debug setting if not set
@@ -57,7 +69,7 @@ frame:SetScript("OnEvent", function(self, event, arg1)
         end
         isProcessingSkills = true
         -- Delay execution to avoid running during heavy loading
-        C_Timer.After(1, function()
+        Delay(1, function()
             local playerName = UnitName("player")
             local _, class = UnitClass("player")
             class = string.lower(class)
@@ -140,8 +152,15 @@ function SlashCmdList.STRAINERS(msg, editBox)
     local faction = UnitFactionGroup("player");
     local _, class = UnitClass("player");
     class = string.lower(class); -- Ensure class name is lowercase
-    local classColor = RAID_CLASS_COLORS[class:upper()]; -- Retrieve the class color
-    local coloredClass = "|c"..classColor.colorStr..class:sub(1,1):upper()..class:sub(2).."|r"; -- Create the colored class string
+    local classColor = RAID_CLASS_COLORS[class:upper()];
+    -- Create the colored class string using RGB values
+    local coloredClass;
+    if classColor and classColor.r and classColor.g and classColor.b then
+        local hexColor = string.format("%02x%02x%02x", classColor.r * 255, classColor.g * 255, classColor.b * 255);
+        coloredClass = "|cFF" .. hexColor .. class:sub(1,1):upper()..class:sub(2) .. "|r";
+    else
+        coloredClass = class:sub(1,1):upper()..class:sub(2); -- Fallback to uncolored class name
+    end
     local factionColor = faction == "Horde" and "|cFFFF0000" or "|cFF3385FF"; -- Define colors for Horde (red) and Alliance (blue)
     print("You're playing a "..coloredClass.." on the "..factionColor..faction.."|r"); -- Print the colored class name and faction
     local classSkills = {
